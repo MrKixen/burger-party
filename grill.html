@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grill Dashboard 🔥</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .new-order {
+            animation: pulse 1s infinite;
+            border: 3px solid #ef4444;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .slide-in { animation: slideIn 0.5s ease; }
+
+        .status-badge {
+            transition: all 0.3s ease;
+        }
+
+        /* Flash-Animation für neue Bestellungen */
+        @keyframes screenFlash {
+            0%, 100% { background-color: transparent; }
+            50% { background-color: rgba(239, 68, 68, 0.2); }
+        }
+        .screen-flash {
+            animation: screenFlash 0.5s ease 3;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-orange-600 to-red-600 shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex justify-between items-center flex-wrap gap-4">
+                <div>
+                    <h1 class="text-4xl font-bold">🔥 Grill Dashboard</h1>
+                    <p class="text-orange-100 mt-1">Live Bestellungen</p>
+                </div>
+                <div class="flex gap-3 items-center">
+                    <button id="testSoundBtn" class="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition">
+                        🔊 Test Sound
+                    </button>
+                    <div id="orderCount" class="bg-white text-orange-600 px-4 py-2 rounded-lg font-bold text-lg">
+                        0 Bestellungen
+                    </div>
+                    <button id="qrBtn" class="bg-white text-orange-600 px-4 py-2 rounded-lg font-semibold hover:bg-orange-50 transition">
+                        📱 QR-Code
+                    </button>
+                    <button id="resetBtn" class="bg-red-700 px-4 py-2 rounded-lg font-semibold hover:bg-red-800 transition">
+                        🗑️ Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div id="qrModal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md text-center">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">📱 Bestellseite</h2>
+            <div id="qrcode" class="flex justify-center mb-4"></div>
+            <p class="text-gray-600 mb-4">Scanne den QR-Code mit dem Handy</p>
+            <input 
+                type="text" 
+                id="orderUrl" 
+                class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg mb-4 text-gray-800 text-center"
+                readonly
+            >
+            <button id="closeQrBtn" class="bg-orange-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-orange-600">
+                Schließen
+            </button>
+        </div>
+    </div>
+
+    <!-- Reset Confirmation Modal -->
+    <div id="resetModal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md text-center">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">⚠️ Alle Bestellungen löschen?</h2>
+            <p class="text-gray-600 mb-6">Diese Aktion kann nicht rückgängig gemacht werden!</p>
+            <div class="flex gap-4 justify-center">
+                <button id="confirmResetBtn" class="bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700">
+                    Ja, alles löschen
+                </button>
+                <button id="cancelResetBtn" class="bg-gray-300 text-gray-800 px-6 py-3 rounded-lg font-semibold hover:bg-gray-400">
+                    Abbrechen
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="hidden fixed bottom-8 right-8 bg-green-600 text-white px-6 py-4 rounded-lg shadow-2xl z-50 transition-all transform">
+        <div class="flex items-center gap-3">
+            <span id="toastIcon" class="text-2xl">✅</span>
+            <span id="toastMessage" class="font-semibold text-lg"></span>
+        </div>
+    </div>
+
+    <!-- Status Filter -->
+    <div class="bg-gray-800 border-b border-gray-700">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex gap-3 flex-wrap">
+                <button class="status-filter active px-4 py-2 rounded-lg font-semibold bg-orange-600" data-status="all">
+                    Alle
+                </button>
+                <button class="status-filter px-4 py-2 rounded-lg font-semibold bg-gray-700 hover:bg-gray-600" data-status="Neu">
+                    🆕 Neu
+                </button>
+                <button class="status-filter px-4 py-2 rounded-lg font-semibold bg-gray-700 hover:bg-gray-600" data-status="In Arbeit">
+                    👨‍🍳 In Arbeit
+                </button>
+                <button class="status-filter px-4 py-2 rounded-lg font-semibold bg-gray-700 hover:bg-gray-600" data-status="Fertig">
+                    ✅ Fertig
+                </button>
+                <button class="status-filter px-4 py-2 rounded-lg font-semibold bg-gray-700 hover:bg-gray-600" data-status="Abgeholt">
+                    📦 Abgeholt
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Orders Grid -->
+    <div class="container mx-auto px-4 py-8">
+        <div id="ordersGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Orders will be inserted here -->
+        </div>
+        <div id="emptyState" class="text-center py-20 text-gray-500">
+            <div class="text-6xl mb-4">🍔</div>
+            <p class="text-xl">Keine Bestellungen vorhanden</p>
+            <p class="text-sm mt-2">Warte auf die erste Bestellung...</p>
+        </div>
+    </div>
+
+    <!-- Audio for notification -->
+    <audio id="notificationSound" preload="auto">
+        <!-- Fallback: Verwende einen öffentlichen Gong-Sound -->
+        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // SUPABASE CONFIG
+        const SUPABASE_URL = 'https://wsfaevqnreidfxtbvduc.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzZmFldnFucmVpZGZ4dGJ2ZHVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4MTk0MTMsImV4cCI6MjA3ODM5NTQxM30.Y6-qip2CAe5eeYCKezGEkWnWySRRh6UggptVkL70DuU';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // State
+        let orders = [];
+        let currentFilter = 'all';
+        let lastOrderCount = 0;
+
+        // Elements
+        const ordersGrid = document.getElementById('ordersGrid');
+        const emptyState = document.getElementById('emptyState');
+        const orderCount = document.getElementById('orderCount');
+        const notificationSound = document.getElementById('notificationSound');
+
+        // Status colors
+        const statusColors = {
+            'Neu': 'bg-gray-600 border-gray-400',
+            'In Arbeit': 'bg-yellow-600 border-yellow-400',
+            'Fertig': 'bg-green-600 border-green-400',
+            'Abgeholt': 'bg-blue-600 border-blue-400'
+        };
+
+        // Initialize
+        async function init() {
+            await loadOrders();
+            subscribeToOrders();
+            setupEventListeners();
+            setupQRCode();
+        }
+
+        // Load Orders
+        async function loadOrders() {
+            try {
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                orders = data || [];
+                lastOrderCount = orders.length;
+                renderOrders();
+            } catch (error) {
+                console.error('Error loading orders:', error);
+            }
+        }
+
+        // Subscribe to realtime changes
+        function subscribeToOrders() {
+            supabase
+                .channel('orders')
+                .on('postgres_changes', 
+                    { event: '*', schema: 'public', table: 'orders' },
+                    (payload) => {
+                        console.log('Change received!', payload);
+                        
+                        if (payload.eventType === 'INSERT') {
+                            orders.unshift(payload.new);
+                            playNotification();
+                            showNewOrderAlert(payload.new);
+                        } else if (payload.eventType === 'UPDATE') {
+                            const index = orders.findIndex(o => o.id === payload.new.id);
+                            if (index !== -1) {
+                                orders[index] = payload.new;
+                            }
+                        } else if (payload.eventType === 'DELETE') {
+                            orders = orders.filter(o => o.id !== payload.old.id);
+                        }
+                        
+                        renderOrders();
+                    }
+                )
+                .subscribe();
+        }
+
+        // Render Orders
+        function renderOrders() {
+            const filteredOrders = currentFilter === 'all' 
+                ? orders 
+                : orders.filter(o => o.status === currentFilter);
+
+            orderCount.textContent = `${orders.length} Bestellung${orders.length !== 1 ? 'en' : ''}`;
+
+            if (filteredOrders.length === 0) {
+                ordersGrid.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            ordersGrid.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+
+            ordersGrid.innerHTML = filteredOrders.map(order => `
+                <div class="bg-gray-800 rounded-lg p-6 border-2 ${order.status === 'Neu' ? 'new-order' : statusColors[order.status]} slide-in">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <div class="text-2xl font-bold text-orange-400">#${order.order_number}</div>
+                            <div class="text-xl font-semibold">${order.name}</div>
+                        </div>
+                        <div class="text-sm text-gray-400">
+                            ${new Date(order.created_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 mb-4 text-sm">
+                        <div class="flex items-center gap-2">
+                            <span class="font-semibold">🍔</span>
+                            <span>${order.burger_type}</span>
+                        </div>
+                        ${order.vegetables && order.vegetables.length > 0 ? `
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold">🥗</span>
+                                <span>${order.vegetables.join(', ')}</span>
+                            </div>
+                        ` : ''}
+                        ${order.sauces && order.sauces.length > 0 ? `
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold">🍯</span>
+                                <span>${order.sauces.join(', ')}</span>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <div class="flex gap-2 flex-wrap">
+                        <button data-order-id="${order.id}" data-status="Neu" class="status-btn flex-1 py-2 px-3 rounded ${order.status === 'Neu' ? 'bg-gray-700' : 'bg-gray-600'} hover:bg-gray-500 text-sm font-semibold transition">
+                            🆕 Neu
+                        </button>
+                        <button data-order-id="${order.id}" data-status="In Arbeit" class="status-btn flex-1 py-2 px-3 rounded ${order.status === 'In Arbeit' ? 'bg-yellow-700' : 'bg-yellow-600'} hover:bg-yellow-500 text-sm font-semibold transition">
+                            👨‍🍳
+                        </button>
+                        <button data-order-id="${order.id}" data-status="Fertig" class="status-btn flex-1 py-2 px-3 rounded ${order.status === 'Fertig' ? 'bg-green-700' : 'bg-green-600'} hover:bg-green-500 text-sm font-semibold transition">
+                            ✅
+                        </button>
+                        <button data-order-id="${order.id}" data-status="Abgeholt" class="status-btn flex-1 py-2 px-3 rounded ${order.status === 'Abgeholt' ? 'bg-blue-700' : 'bg-blue-600'} hover:bg-blue-500 text-sm font-semibold transition">
+                            📦
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            // Add event listeners to status buttons (Event Delegation)
+            document.querySelectorAll('.status-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const orderId = parseInt(this.dataset.orderId);
+                    const newStatus = this.dataset.status;
+                    updateStatus(orderId, newStatus);
+                });
+            });
+        }
+
+        // Update Status
+        async function updateStatus(orderId, newStatus) {
+            // Finde den Button der geklickt wurde
+            const clickedButton = document.querySelector(`[data-order-id="${orderId}"][data-status="${newStatus}"]`);
+            
+            try {
+                // Optimistic Update - sofort lokal ändern für schnelles Feedback
+                const orderIndex = orders.findIndex(o => o.id === orderId);
+                if (orderIndex !== -1) {
+                    const oldStatus = orders[orderIndex].status;
+                    const orderName = orders[orderIndex].name;
+                    
+                    // Button-Feedback
+                    if (clickedButton) {
+                        clickedButton.disabled = true;
+                        clickedButton.style.opacity = '0.5';
+                        clickedButton.innerHTML = '⏳';
+                    }
+
+                    orders[orderIndex].status = newStatus;
+                    renderOrders();
+
+                    // Dann an Supabase senden
+                    const { error } = await supabase
+                        .from('orders')
+                        .update({ status: newStatus })
+                        .eq('id', orderId);
+
+                    if (error) {
+                        // Bei Fehler: Zurücksetzen auf alten Status
+                        orders[orderIndex].status = oldStatus;
+                        renderOrders();
+                        throw error;
+                    }
+
+                    // Erfolgs-Toast
+                    showToast(`${orderName}: ${newStatus}`);
+
+                    // Erfolgs-Feedback (kurz blinken)
+                    setTimeout(() => {
+                        const updatedButton = document.querySelector(`[data-order-id="${orderId}"][data-status="${newStatus}"]`);
+                        if (updatedButton) {
+                            updatedButton.style.transform = 'scale(1.1)';
+                            setTimeout(() => {
+                                updatedButton.style.transform = 'scale(1)';
+                            }, 200);
+                        }
+                    }, 100);
+                }
+            } catch (error) {
+                console.error('Error updating status:', error);
+                alert('Fehler beim Aktualisieren des Status!');
+            }
+        }
+
+        // Show Toast Notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            const toastIcon = document.getElementById('toastIcon');
+            
+            // Style basierend auf Typ
+            if (type === 'new-order') {
+                toast.className = 'fixed bottom-8 right-8 bg-red-600 text-white px-8 py-6 rounded-lg shadow-2xl z-50 transform scale-110';
+                toastIcon.textContent = '🆕';
+                toast.style.fontSize = '1.2rem';
+            } else {
+                toast.className = 'fixed bottom-8 right-8 bg-green-600 text-white px-6 py-4 rounded-lg shadow-2xl z-50';
+                toastIcon.textContent = '✅';
+                toast.style.fontSize = '1rem';
+            }
+            
+            toastMessage.textContent = message;
+            
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, type === 'new-order' ? 4000 : 2000);
+        }
+
+        // Play notification sound
+        function playNotification() {
+            const audio = document.getElementById('notificationSound');
+            
+            // Versuche Sound abzuspielen
+            if (audio) {
+                audio.volume = 1.0; // Volle Lautstärke
+                audio.currentTime = 0; // Von Anfang starten
+                
+                const playPromise = audio.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise
+                        .then(() => {
+                            console.log('🔔 Sound erfolgreich abgespielt');
+                        })
+                        .catch(error => {
+                            console.log('Sound blockiert - erstelle Web Audio Gong:', error);
+                            // Fallback: Erzeuge einen Gong-Sound mit Web Audio API
+                            playWebAudioGong();
+                        });
+                }
+            } else {
+                // Fallback wenn Audio-Element fehlt
+                playWebAudioGong();
+            }
+        }
+
+        // Fallback: Erzeuge Gong-Sound mit Web Audio API
+        function playWebAudioGong() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Erzeuge einen tiefen Gong-Ton
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Tiefe Frequenz für Gong-Effekt
+                oscillator.frequency.value = 200;
+                oscillator.type = 'sine';
+                
+                // Lautstärke-Envelope (Gong-Charakter: laut start, dann ausblenden)
+                gainNode.gain.setValueAtTime(0.8, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 2);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 2);
+                
+                console.log('🎵 Web Audio Gong abgespielt');
+            } catch (error) {
+                console.log('Web Audio nicht verfügbar:', error);
+            }
+        }
+
+        // Show new order alert
+        function showNewOrderAlert(order) {
+            console.log('🆕 Neue Bestellung:', order);
+            
+            // Screen Flash
+            document.body.classList.add('screen-flash');
+            setTimeout(() => {
+                document.body.classList.remove('screen-flash');
+            }, 1500);
+            
+            // Großer Alarm-Toast
+            showToast(`NEUE BESTELLUNG #${order.order_number}: ${order.name}`, 'new-order');
+        }
+
+        // Event Listeners
+        function setupEventListeners() {
+            // Test Sound Button
+            document.getElementById('testSoundBtn').addEventListener('click', () => {
+                playNotification();
+                showToast('🔊 Sound-Test');
+            });
+
+            // Status filter
+            document.querySelectorAll('.status-filter').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.status-filter').forEach(b => {
+                        b.classList.remove('active', 'bg-orange-600');
+                        b.classList.add('bg-gray-700');
+                    });
+                    btn.classList.remove('bg-gray-700');
+                    btn.classList.add('active', 'bg-orange-600');
+                    
+                    currentFilter = btn.dataset.status;
+                    renderOrders();
+                });
+            });
+
+            // QR Code Modal
+            document.getElementById('qrBtn').addEventListener('click', () => {
+                document.getElementById('qrModal').classList.remove('hidden');
+            });
+
+            document.getElementById('closeQrBtn').addEventListener('click', () => {
+                document.getElementById('qrModal').classList.add('hidden');
+            });
+
+            // Reset Modal
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                document.getElementById('resetModal').classList.remove('hidden');
+            });
+
+            document.getElementById('cancelResetBtn').addEventListener('click', () => {
+                document.getElementById('resetModal').classList.add('hidden');
+            });
+
+            document.getElementById('confirmResetBtn').addEventListener('click', async () => {
+                try {
+                    const { error } = await supabase
+                        .from('orders')
+                        .delete()
+                        .neq('id', 0); // Delete all
+
+                    if (error) throw error;
+
+                    orders = [];
+                    renderOrders();
+                    document.getElementById('resetModal').classList.add('hidden');
+                } catch (error) {
+                    console.error('Error resetting orders:', error);
+                    alert('Fehler beim Löschen der Bestellungen!');
+                }
+            });
+        }
+
+        // Setup QR Code
+        function setupQRCode() {
+            const orderUrl = window.location.origin + '/order.html';
+            document.getElementById('orderUrl').value = orderUrl;
+
+            QRCode.toCanvas(
+                document.createElement('canvas'),
+                orderUrl,
+                { width: 256, margin: 2 },
+                (error, canvas) => {
+                    if (error) {
+                        console.error('QR Code error:', error);
+                        return;
+                    }
+                    document.getElementById('qrcode').appendChild(canvas);
+                }
+            );
+        }
+
+        // Start
+        init();
+    </script>
+</body>
+</html>

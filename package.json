@@ -1,0 +1,24 @@
+{
+  "name": "burger-party-app",
+  "version": "1.0.0",
+  "description": "Live Burger-Bestell-App für Geburtstagsfeiern mit Supabase Realtime",
+  "main": "order.html",
+  "scripts": {
+    "dev": "python -m http.server 8000 || python3 -m http.server 8000",
+    "start": "npm run dev",
+    "deploy:vercel": "vercel --prod",
+    "deploy:netlify": "netlify deploy --prod"
+  },
+  "keywords": [
+    "burger",
+    "party",
+    "ordering",
+    "realtime",
+    "supabase",
+    "event-app"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
+}

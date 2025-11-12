@@ -1,0 +1,40 @@
+# Burger Party App - .gitignore
+
+# Umgebungsvariablen (falls du später welche nutzt)
+.env
+.env.local
+.env.production
+
+# Editor-Dateien
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Temporäre Dateien
+*.log
+*.tmp
+*.bak
+
+# Node modules (falls du später was installierst)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build-Ordner (falls du später etwas buildest)
+dist/
+build/
+
+# Test-Dateien (optional)
+# test-data.sql

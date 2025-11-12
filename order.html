@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Burger Bestellung 🍔</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        .shake { animation: shake 0.5s; }
+        
+        .option-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .option-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .option-card.selected {
+            border: 3px solid #10b981;
+            background: #d1fae5;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeIn 0.5s ease; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-orange-100 via-yellow-50 to-red-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-2xl">
+        <!-- Header -->
+        <div class="text-center mb-8 fade-in">
+            <h1 class="text-5xl font-bold text-gray-800 mb-2">🍔 Burger Station</h1>
+            <p class="text-xl text-gray-600">Bau dir deinen perfekten Burger!</p>
+        </div>
+
+        <!-- Success Message -->
+        <div id="successMessage" class="hidden bg-green-500 text-white p-4 rounded-lg mb-6 text-center font-semibold">
+            ✅ Bestellung erfolgreich! Deine Nummer: <span id="orderNumber"></span>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="hidden bg-red-500 text-white p-4 rounded-lg mb-6 text-center font-semibold"></div>
+
+        <!-- Order Form -->
+        <div class="bg-white rounded-2xl shadow-2xl p-6 fade-in">
+            
+            <!-- Name Input -->
+            <div class="mb-8">
+                <label class="block text-lg font-bold text-gray-700 mb-3">
+                    👤 Dein Name
+                </label>
+                <input 
+                    type="text" 
+                    id="customerName" 
+                    placeholder="z.B. Max, Lisa, Gamer123..."
+                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-lg focus:border-orange-500 focus:outline-none"
+                    maxlength="20"
+                    required
+                >
+            </div>
+
+            <!-- Burger Type -->
+            <div class="mb-8">
+                <label class="block text-lg font-bold text-gray-700 mb-3">
+                    🍔 Burger-Art
+                </label>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="option-card border-2 border-gray-300 rounded-lg p-4 text-center" data-type="burger" data-value="Normal">
+                        <div class="text-4xl mb-2">🍔</div>
+                        <div class="font-semibold">Normal</div>
+                        <div class="text-sm text-gray-500">Klassisch</div>
+                    </div>
+                    <div class="option-card border-2 border-gray-300 rounded-lg p-4 text-center" data-type="burger" data-value="Cheeseburger">
+                        <div class="text-4xl mb-2">🧀</div>
+                        <div class="font-semibold">Cheeseburger</div>
+                        <div class="text-sm text-gray-500">Mit Käse</div>
+                    </div>
+                    <div class="option-card border-2 border-gray-300 rounded-lg p-4 text-center" data-type="burger" data-value="Smash">
+                        <div class="text-4xl mb-2">💥</div>
+                        <div class="font-semibold">Smash</div>
+                        <div class="text-sm text-gray-500">Extra kross</div>
+                    </div>
+                    <div class="option-card border-2 border-gray-300 rounded-lg p-4 text-center" data-type="burger" data-value="Veggie">
+                        <div class="text-4xl mb-2">🥬</div>
+                        <div class="font-semibold">Veggie</div>
+                        <div class="text-sm text-gray-500">Pflanzlich</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vegetables -->
+            <div class="mb-8">
+                <label class="block text-lg font-bold text-gray-700 mb-3">
+                    🥗 Gemüse (mehrere möglich)
+                </label>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="option-card border-2 border-gray-300 rounded-lg p-4 text-center" data-type="vegetables" data-value="Tomate">
+                        <div class="text-4xl mb-2">🍅</div>
+                        <div class="font-semibold">Tomate</div>
+                    </div>
+                    <div class="option-card border-2 border-gray-300 rounded-lg p-4 text-center" data-type="vegetables" data-value="Gurke">
+                        <div class="text-4xl mb-2">🥒</div>
+                        <div class="font-semibold">Gurke</div>
+                    </div>
+                    <div class="option-card border-2 border-gray-300 rounded-lg p-4 text-center" data-type="vegetables" data-value="Zwiebeln">
+                        <div class="text-4xl mb-2">🧅</div>
+                        <div class="font-semibold">Zwiebeln</div>
+                    </div>
+                    <div class="option-card border-2 border-gray-300 rounded-lg p-4 text-center" data-type="vegetables" data-value="Salat">
+                        <div class="text-4xl mb-2">🥬</div>
+                        <div class="font-semibold">Salat</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sauces -->
+            <div class="mb-8">
+                <label class="block text-lg font-bold text-gray-700 mb-3">
+                    🍯 Saucen (mehrere möglich)
+                </label>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="option-card border-2 border-gray-300 rounded-lg p-4 text-center" data-type="sauces" data-value="BBQ-Sauce">
+                        <div class="text-4xl mb-2">🍖</div>
+                        <div class="font-semibold">BBQ-Sauce</div>
+                    </div>
+                    <div class="option-card border-2 border-gray-300 rounded-lg p-4 text-center" data-type="sauces" data-value="Ketchup">
+                        <div class="text-4xl mb-2">🍅</div>
+                        <div class="font-semibold">Ketchup</div>
+                    </div>
+                    <div class="option-card border-2 border-gray-300 rounded-lg p-4 text-center" data-type="sauces" data-value="Mayo">
+                        <div class="text-4xl mb-2">🥚</div>
+                        <div class="font-semibold">Mayo</div>
+                    </div>
+                    <div class="option-card border-2 border-gray-300 rounded-lg p-4 text-center" data-type="sauces" data-value="Senf">
+                        <div class="text-4xl mb-2">💛</div>
+                        <div class="font-semibold">Senf</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Burger Preview -->
+            <div id="burgerPreview" class="mb-8 p-6 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-lg border-2 border-orange-300">
+                <div class="text-center text-lg font-bold text-gray-700 mb-3">📋 Deine Bestellung:</div>
+                <div id="previewContent" class="text-center text-gray-600">
+                    Wähle deine Optionen aus...
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button 
+                id="submitBtn"
+                class="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold py-4 px-6 rounded-lg text-xl hover:from-orange-600 hover:to-red-600 transition-all transform hover:scale-105 shadow-lg"
+            >
+                🔥 Bestellung abschicken
+            </button>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-8 text-gray-600">
+            <p class="text-sm">Du kannst nur 1x bestellen!</p>
+        </div>
+    </div>
+
+    <script>
+        // SUPABASE CONFIG - HIER DEINE CREDENTIALS EINFÜGEN
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // State
+        let selectedBurger = '';
+        let selectedVegetables = [];
+        let selectedSauces = [];
+
+        // Elements
+        const nameInput = document.getElementById('customerName');
+        const submitBtn = document.getElementById('submitBtn');
+        const successMessage = document.getElementById('successMessage');
+        const errorMessage = document.getElementById('errorMessage');
+        const previewContent = document.getElementById('previewContent');
+
+        // Selection Handler
+        document.querySelectorAll('.option-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const type = card.dataset.type;
+                const value = card.dataset.value;
+
+                if (type === 'burger') {
+                    // Single selection
+                    document.querySelectorAll('[data-type="burger"]').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    selectedBurger = value;
+                } else if (type === 'vegetables') {
+                    // Multiple selection
+                    card.classList.toggle('selected');
+                    if (selectedVegetables.includes(value)) {
+                        selectedVegetables = selectedVegetables.filter(v => v !== value);
+                    } else {
+                        selectedVegetables.push(value);
+                    }
+                } else if (type === 'sauces') {
+                    // Multiple selection
+                    card.classList.toggle('selected');
+                    if (selectedSauces.includes(value)) {
+                        selectedSauces = selectedSauces.filter(s => s !== value);
+                    } else {
+                        selectedSauces.push(value);
+                    }
+                }
+
+                updatePreview();
+            });
+        });
+
+        // Update Preview
+        function updatePreview() {
+            let preview = '';
+            
+            if (selectedBurger) {
+                preview += `🍔 <strong>${selectedBurger}</strong><br>`;
+            }
+            
+            if (selectedVegetables.length > 0) {
+                preview += `🥗 ${selectedVegetables.join(', ')}<br>`;
+            }
+            
+            if (selectedSauces.length > 0) {
+                preview += `🍯 ${selectedSauces.join(', ')}`;
+            }
+
+            if (preview === '') {
+                preview = 'Wähle deine Optionen aus...';
+            }
+
+            previewContent.innerHTML = preview;
+        }
+
+        // Submit Order
+        submitBtn.addEventListener('click', async () => {
+            const name = nameInput.value.trim();
+
+            // Validation
+            if (!name) {
+                showError('Bitte gib deinen Namen ein!');
+                nameInput.classList.add('shake');
+                setTimeout(() => nameInput.classList.remove('shake'), 500);
+                return;
+            }
+
+            if (!selectedBurger) {
+                showError('Bitte wähle einen Burger aus!');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Wird gesendet...';
+
+            try {
+                // Check if name already ordered
+                const { data: existingOrders } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('name', name)
+                    .single();
+
+                if (existingOrders) {
+                    showError('Du hast bereits bestellt! Nur 1 Bestellung pro Person.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '🔥 Bestellung abschicken';
+                    return;
+                }
+
+                // Get next order number
+                const { data: allOrders } = await supabase
+                    .from('orders')
+                    .select('order_number')
+                    .order('order_number', { ascending: false })
+                    .limit(1);
+
+                const nextNumber = allOrders && allOrders.length > 0 ? allOrders[0].order_number + 1 : 1;
+
+                // Create order
+                const order = {
+                    order_number: nextNumber,
+                    name: name,
+                    burger_type: selectedBurger,
+                    vegetables: selectedVegetables,
+                    sauces: selectedSauces,
+                    status: 'Neu',
+                    created_at: new Date().toISOString()
+                };
+
+                const { error } = await supabase
+                    .from('orders')
+                    .insert([order]);
+
+                if (error) throw error;
+
+                // Success
+                showSuccess(nextNumber);
+                
+                // Reset form
+                setTimeout(() => {
+                    nameInput.value = '';
+                    selectedBurger = '';
+                    selectedVegetables = [];
+                    selectedSauces = [];
+                    document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+                    updatePreview();
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '🔥 Bestellung abschicken';
+                }, 3000);
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Fehler beim Senden. Bitte nochmal versuchen!');
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🔥 Bestellung abschicken';
+            }
+        });
+
+        function showSuccess(orderNumber) {
+            successMessage.classList.remove('hidden');
+            document.getElementById('orderNumber').textContent = `#${orderNumber}`;
+            setTimeout(() => {
+                successMessage.classList.add('hidden');
+            }, 5000);
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.remove('hidden');
+            setTimeout(() => {
+                errorMessage.classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
