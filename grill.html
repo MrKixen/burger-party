@@ -65,17 +65,7 @@
         </div>
     </div>
 
-    <!-- Sound Unlock Modal (für iOS/Safari) -->
-    <div id="soundUnlockModal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-        <div class="bg-white rounded-2xl p-8 max-w-md text-center">
-            <div class="text-6xl mb-4">🔊</div>
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">Sound aktivieren</h2>
-            <p class="text-gray-600 mb-6">Klicke hier um Benachrichtigungen bei neuen Bestellungen zu hören!</p>
-            <button id="unlockSoundBtn" class="bg-orange-600 text-white px-8 py-4 rounded-lg font-bold text-xl hover:bg-orange-700 w-full">
-                🔔 Sound einschalten
-            </button>
-        </div>
-    </div>
+    <!-- QR Code Modal -->
     <div id="qrModal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
         <div class="bg-white rounded-2xl p-8 max-w-md text-center">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">📱 Bestellseite</h2>
@@ -184,20 +174,31 @@
             'Abgeholt': 'bg-blue-600 border-blue-400'
         };
 
-    // Initialize
-    async function init() {
-    await loadOrders();
-    subscribeToOrders();
-    setupEventListeners();
-    setupQRCode();
-    
-    // Show sound unlock modal on iOS/Safari (nur einmal)
-    if (!localStorage.getItem('soundUnlocked')) {
-        setTimeout(() => {
-            document.getElementById('soundUnlockModal').classList.remove('hidden');
-        }, 1000);
-    }
-}
+        // Initialize
+        async function init() {
+            await loadOrders();
+            subscribeToOrders();
+            setupEventListeners();
+            setupQRCode();
+        }
+
+        // Load Orders
+        async function loadOrders() {
+            try {
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                orders = data || [];
+                lastOrderCount = orders.length;
+                renderOrders();
+            } catch (error) {
+                console.error('Error loading orders:', error);
+            }
+        }
 
         // Subscribe to realtime changes
         function subscribeToOrders() {
@@ -434,48 +435,32 @@
 
         // Fallback: Erzeuge Gong-Sound mit Web Audio API
         function playWebAudioGong() {
-    try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // Resume context (wichtig für iOS)
-        audioContext.resume().then(() => {
-            // Erzeuge einen tiefen Gong-Ton
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            // Tiefe Frequenz für Gong-Effekt
-            oscillator.frequency.value = 200;
-            oscillator.type = 'sine';
-            
-            // Lautstärke-Envelope (Gong-Charakter: laut start, dann ausblenden)
-            gainNode.gain.setValueAtTime(0.8, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 2);
-            
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 2);
-            
-            console.log('🎵 Web Audio Gong abgespielt');
-        });
-        
-        // Vibration als zusätzliches Feedback (Mobile)
-        if ('vibrate' in navigator) {
-            navigator.vibrate([200, 100, 200, 100, 200]);
-            console.log('📳 Vibration ausgelöst');
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Erzeuge einen tiefen Gong-Ton
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Tiefe Frequenz für Gong-Effekt
+                oscillator.frequency.value = 200;
+                oscillator.type = 'sine';
+                
+                // Lautstärke-Envelope (Gong-Charakter: laut start, dann ausblenden)
+                gainNode.gain.setValueAtTime(0.8, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 2);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 2);
+                
+                console.log('🎵 Web Audio Gong abgespielt');
+            } catch (error) {
+                console.log('Web Audio nicht verfügbar:', error);
+            }
         }
-        
-    } catch (error) {
-        console.log('Web Audio nicht verfügbar:', error);
-        
-        // Nur Vibration als letzter Fallback
-        if ('vibrate' in navigator) {
-            navigator.vibrate([200, 100, 200, 100, 200]);
-            console.log('📳 Nur Vibration (kein Audio verfügbar)');
-        }
-    }
-}
 
         // Show new order alert
         function showNewOrderAlert(order) {
@@ -496,30 +481,6 @@
 
         // Event Listeners
         function setupEventListeners() {
-            // Sound Unlock Button (für iOS/Safari)
-    document.getElementById('unlockSoundBtn').addEventListener('click', () => {
-        console.log('🔓 Unlocking sound for iOS/Safari...');
-        
-        // Erstelle AudioContext (entsperrt Audio auf iOS)
-        try {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            audioContext.resume();
-            console.log('✅ AudioContext created and resumed');
-        } catch (e) {
-            console.log('AudioContext error:', e);
-        }
-        
-        // Spiele Test-Sound ab
-        playNotification();
-        
-        // Schließe Modal
-        document.getElementById('soundUnlockModal').classList.add('hidden');
-        
-        // Merke dass Sound aktiviert wurde
-        localStorage.setItem('soundUnlocked', 'true');
-        
-        showToast('🔊 Sound aktiviert!');
-    });
             // Test Sound Button
             document.getElementById('testSoundBtn').addEventListener('click', () => {
                 playNotification();
