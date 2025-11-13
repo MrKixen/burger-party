@@ -122,6 +122,31 @@
                 </div>
             </div>
 
+            <!-- Extras -->
+            <div class="mb-8">
+                <label class="block text-lg font-bold text-gray-700 mb-3">
+                    ⭐ Extras (mehrere möglich)
+                </label>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="option-card border-2 border-gray-300 rounded-lg p-4 text-center" data-type="extras" data-value="Extra Käse">
+                        <div class="text-4xl mb-2">🧀</div>
+                        <div class="font-semibold">Extra Käse</div>
+                    </div>
+                    <div class="option-card border-2 border-gray-300 rounded-lg p-4 text-center" data-type="extras" data-value="Bacon">
+                        <div class="text-4xl mb-2">🥓</div>
+                        <div class="font-semibold">Bacon</div>
+                    </div>
+                    <div class="option-card border-2 border-gray-300 rounded-lg p-4 text-center" data-type="extras" data-value="Doppel Patty">
+                        <div class="text-4xl mb-2">🍔🍔</div>
+                        <div class="font-semibold">Doppel Patty</div>
+                    </div>
+                    <div class="option-card border-2 border-gray-300 rounded-lg p-4 text-center" data-type="extras" data-value="Extra Scharf">
+                        <div class="text-4xl mb-2">🌶️</div>
+                        <div class="font-semibold">Extra Scharf</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Sauces -->
             <div class="mb-8">
                 <label class="block text-lg font-bold text-gray-700 mb-3">
@@ -172,8 +197,8 @@
 
     <script>
         // SUPABASE CONFIG - HIER DEINE CREDENTIALS EINFÜGEN
-        const SUPABASE_URL = 'https://wsfaevqnreidfxtbvduc.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzZmFldnFucmVpZGZ4dGJ2ZHVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4MTk0MTMsImV4cCI6MjA3ODM5NTQxM30.Y6-qip2CAe5eeYCKezGEkWnWySRRh6UggptVkL70DuU';
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
         
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -181,6 +206,7 @@
         let selectedBurger = '';
         let selectedVegetables = [];
         let selectedSauces = [];
+        let selectedExtras = [];
 
         // Elements
         const nameInput = document.getElementById('customerName');
@@ -216,6 +242,14 @@
                     } else {
                         selectedSauces.push(value);
                     }
+                } else if (type === 'extras') {
+                    // Multiple selection
+                    card.classList.toggle('selected');
+                    if (selectedExtras.includes(value)) {
+                        selectedExtras = selectedExtras.filter(e => e !== value);
+                    } else {
+                        selectedExtras.push(value);
+                    }
                 }
 
                 updatePreview();
@@ -235,7 +269,11 @@
             }
             
             if (selectedSauces.length > 0) {
-                preview += `🍯 ${selectedSauces.join(', ')}`;
+                preview += `🍯 ${selectedSauces.join(', ')}<br>`;
+            }
+
+            if (selectedExtras.length > 0) {
+                preview += `⭐ ${selectedExtras.join(', ')}`;
             }
 
             if (preview === '') {
@@ -296,6 +334,7 @@
                     burger_type: selectedBurger,
                     vegetables: selectedVegetables,
                     sauces: selectedSauces,
+                    extras: selectedExtras,
                     status: 'Neu',
                     created_at: new Date().toISOString()
                 };
@@ -315,6 +354,7 @@
                     selectedBurger = '';
                     selectedVegetables = [];
                     selectedSauces = [];
+                    selectedExtras = [];
                     document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
                     updatePreview();
                     submitBtn.disabled = false;
