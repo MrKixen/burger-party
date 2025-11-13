@@ -202,31 +202,41 @@
 
         // Subscribe to realtime changes
         function subscribeToOrders() {
-            supabase
-                .channel('orders')
-                .on('postgres_changes', 
-                    { event: '*', schema: 'public', table: 'orders' },
-                    (payload) => {
-                        console.log('Change received!', payload);
-                        
-                        if (payload.eventType === 'INSERT') {
-                            orders.unshift(payload.new);
-                            playNotification();  //
-                            showNewOrderAlert(payload.new);
-                        } else if (payload.eventType === 'UPDATE') {
-                            const index = orders.findIndex(o => o.id === payload.new.id);
-                            if (index !== -1) {
-                                orders[index] = payload.new;
-                            }
-                        } else if (payload.eventType === 'DELETE') {
-                            orders = orders.filter(o => o.id !== payload.old.id);
-                        }
-                        
-                        renderOrders();
+    console.log('📡 Subscribing to realtime changes...');
+    
+    supabase
+        .channel('orders')
+        .on('postgres_changes', 
+            { event: '*', schema: 'public', table: 'orders' },
+            (payload) => {
+                console.log('📨 Change received!', payload);
+                console.log('📋 Event type:', payload.eventType);
+                
+                if (payload.eventType === 'INSERT') {
+                    console.log('🆕 NEW ORDER detected:', payload.new);
+                    orders.unshift(payload.new);
+                    
+                    console.log('🔊 Calling playNotification()...');
+                    playNotification();
+                    
+                    console.log('📢 Calling showNewOrderAlert()...');
+                    showNewOrderAlert(payload.new);
+                } else if (payload.eventType === 'UPDATE') {
+                    const index = orders.findIndex(o => o.id === payload.new.id);
+                    if (index !== -1) {
+                        orders[index] = payload.new;
                     }
-                )
-                .subscribe();
-        }
+                } else if (payload.eventType === 'DELETE') {
+                    orders = orders.filter(o => o.id !== payload.old.id);
+                }
+                
+                renderOrders();
+            }
+        )
+        .subscribe((status) => {
+            console.log('📡 Subscription status:', status);
+        });
+}
 
         // Render Orders
         function renderOrders() {
@@ -390,31 +400,38 @@
 
         // Play notification sound
         function playNotification() {
-            const audio = document.getElementById('notificationSound');
-            
-            // Versuche Sound abzuspielen
-            if (audio) {
-                audio.volume = 1.0; // Volle Lautstärke
-                audio.currentTime = 0; // Von Anfang starten
-                
-                const playPromise = audio.play();
-                
-                if (playPromise !== undefined) {
-                    playPromise
-                        .then(() => {
-                            console.log('🔔 Sound erfolgreich abgespielt');
-                        })
-                        .catch(error => {
-                            console.log('Sound blockiert - erstelle Web Audio Gong:', error);
-                            // Fallback: Erzeuge einen Gong-Sound mit Web Audio API
-                            playWebAudioGong();
-                        });
-                }
-            } else {
-                // Fallback wenn Audio-Element fehlt
-                playWebAudioGong();
-            }
+    console.log('🔊 playNotification() CALLED');
+    const audio = document.getElementById('notificationSound');
+    
+    console.log('🎵 Audio element:', audio);
+    
+    // Versuche Sound abzuspielen
+    if (audio) {
+        audio.volume = 1.0; // Volle Lautstärke
+        audio.currentTime = 0; // Von Anfang starten
+        
+        console.log('🎵 Audio element found, trying to play...');
+        
+        const playPromise = audio.play();
+        
+        if (playPromise !== undefined) {
+            playPromise
+                .then(() => {
+                    console.log('✅ Sound erfolgreich abgespielt');
+                })
+                .catch(error => {
+                    console.error('❌ Sound blockiert:', error);
+                    console.log('🔄 Trying Web Audio fallback...');
+                    // Fallback: Erzeuge einen Gong-Sound mit Web Audio API
+                    playWebAudioGong();
+                });
         }
+    } else {
+        console.error('❌ Audio element NOT FOUND!');
+        // Fallback wenn Audio-Element fehlt
+        playWebAudioGong();
+    }
+}
 
         // Fallback: Erzeuge Gong-Sound mit Web Audio API
         function playWebAudioGong() {
@@ -447,19 +464,19 @@
 
         // Show new order alert
         function showNewOrderAlert(order) {
-            console.log('🆕 Neue Bestellung:', order);
-
-            // Sound abspielen
-            playNotification();
-            
-            // Screen Flash
-            document.body.classList.add('screen-flash');
-            setTimeout(() => {
-                document.body.classList.remove('screen-flash');
-            }, 1500);
-            
-            // Großer Alarm-Toast
-            showToast(`NEUE BESTELLUNG #${order.order_number}: ${order.name}`, 'new-order');
+    console.log('📢 showNewOrderAlert() CALLED with:', order);
+    
+    // Screen Flash
+    console.log('🎨 Adding screen-flash...');
+    document.body.classList.add('screen-flash');
+    setTimeout(() => {
+        document.body.classList.remove('screen-flash');
+        console.log('🎨 Removed screen-flash');
+    }, 1500);
+    
+    // Großer Alarm-Toast
+    console.log('💬 Showing toast...');
+    showToast(`NEUE BESTELLUNG #${order.order_number}: ${order.name}`, 'new-order');
         }
 
         // Event Listeners
