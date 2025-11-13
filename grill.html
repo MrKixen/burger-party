@@ -211,7 +211,7 @@
                         
                         if (payload.eventType === 'INSERT') {
                             orders.unshift(payload.new);
-                            playNotification();
+                            playNotification();  //
                             showNewOrderAlert(payload.new);
                         } else if (payload.eventType === 'UPDATE') {
                             const index = orders.findIndex(o => o.id === payload.new.id);
