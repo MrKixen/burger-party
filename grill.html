@@ -448,6 +448,9 @@
         // Show new order alert
         function showNewOrderAlert(order) {
             console.log('🆕 Neue Bestellung:', order);
+
+            // Sound abspielen
+            playNotification();
             
             // Screen Flash
             document.body.classList.add('screen-flash');
