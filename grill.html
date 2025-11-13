@@ -150,8 +150,8 @@
 
     <script>
         // SUPABASE CONFIG
-        const SUPABASE_URL = 'https://wsfaevqnreidfxtbvduc.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzZmFldnFucmVpZGZ4dGJ2ZHVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4MTk0MTMsImV4cCI6MjA3ODM5NTQxM30.Y6-qip2CAe5eeYCKezGEkWnWySRRh6UggptVkL70DuU';
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
         
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -272,6 +272,12 @@
                             <div class="flex items-center gap-2">
                                 <span class="font-semibold">🍯</span>
                                 <span>${order.sauces.join(', ')}</span>
+                            </div>
+                        ` : ''}
+                        ${order.extras && order.extras.length > 0 ? `
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold">⭐</span>
+                                <span>${order.extras.join(', ')}</span>
                             </div>
                         ` : ''}
                     </div>
